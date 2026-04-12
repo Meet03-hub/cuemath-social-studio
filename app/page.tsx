@@ -8,7 +8,6 @@ import confetti from "canvas-confetti";
 import Tilt from "react-parallax-tilt";
 import { Typewriter } from "react-simple-typewriter";
 import JSZip from "jszip";
-// @ts-ignore
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { 
@@ -77,7 +76,7 @@ export default function CuemathStudio() {
     }
   };
 
-  // 2. Bulk Export Logic (ZIP)
+  // 2. Bulk Export Logic (Vercel-Safe Dynamic Import)
   const downloadAll = async () => {
     if (slides.length === 0 || !cardRef.current) return;
     
@@ -85,16 +84,14 @@ export default function CuemathStudio() {
     const originalIndex = index;
     
     try {
-      // 🔥 THIS IS THE FIX: Tell TypeScript to ignore the next line
+      // 🔥 DYNAMIC IMPORT: This fixes the Vercel build error
       // @ts-ignore
       const { saveAs } = await import("file-saver");
-      
       const zip = new JSZip();
 
       for (let i = 0; i < slides.length; i++) {
-        setIndex(i); // Change slide
-        // Wait for animation & render
-        await new Promise((r) => setTimeout(r, 600)); 
+        setIndex(i); 
+        await new Promise((r) => setTimeout(r, 600)); // Wait for render
         
         const dataUrl = await htmlToImage.toPng(cardRef.current!, {
           pixelRatio: 2,
@@ -110,13 +107,17 @@ export default function CuemathStudio() {
       toast.success("All slides exported!", { id: batchToast });
     } catch (e) {
       toast.error("Bulk export failed.", { id: batchToast });
-      console.error(e);
     } finally {
       setIndex(originalIndex);
     }
   };
 
-  // 3. AI Generation Handler
+  const updateSlideText = (field: keyof Slide, val: string) => {
+    const newSlides = [...slides];
+    newSlides[index][field] = val;
+    setSlides(newSlides);
+  };
+  // AI Generation Handler with celebration logic
   const generate = async () => {
     if (!idea.trim() || loading) return;
     setLoading(true);
@@ -132,7 +133,14 @@ export default function CuemathStudio() {
         setSlides(data.result);
         setIndex(0);
         toast.success("✨ Carousel Generated!", { id: toastId });
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#ea580c', '#2D2CC1', '#ffffff'] });
+        
+        // Celebrate success
+        confetti({ 
+          particleCount: 150, 
+          spread: 70, 
+          origin: { y: 0.6 }, 
+          colors: ['#ea580c', '#2D2CC1', '#ffffff'] 
+        });
       }
     } catch (err) {
       toast.error("AI connection failed.", { id: toastId });
@@ -141,28 +149,33 @@ export default function CuemathStudio() {
     }
   };
 
-  const updateSlideText = (field: keyof Slide, val: string) => {
-    const newSlides = [...slides];
-    newSlides[index][field] = val;
-    setSlides(newSlides);
-  };
+  // Keyboard navigation for power users
+  useEffect(() => {
+    const handleKeys = (e: KeyboardEvent) => {
+      if (slides.length === 0) return;
+      if (e.key === "ArrowLeft") setIndex(prev => Math.max(0, prev - 1));
+      if (e.key === "ArrowRight") setIndex(prev => Math.min(slides.length - 1, prev + 1));
+    };
+    window.addEventListener("keydown", handleKeys);
+    return () => window.removeEventListener("keydown", handleKeys);
+  }, [slides]);
+
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-slate-900 font-sans p-4 md:p-10 selection:bg-orange-100 relative overflow-hidden">
-      {/* Background Math Blueprint Grid */}
+      {/* Professional Workspace Background */}
       <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       
       <Toaster position="top-center" richColors />
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10">
 
-        {/* SIDEBAR PANEL */}
+        {/* SIDEBAR - Input & Brand Controls */}
         <aside className="lg:col-span-4 space-y-8">
           <div className="bg-white p-10 rounded-[50px] shadow-2xl shadow-slate-200/60 border border-slate-50 relative">
             <div className="absolute -top-3 -right-3 bg-[#0F172A] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg border border-white/10 flex items-center gap-1.5">
               <Zap size={10} className="fill-yellow-400 text-yellow-400" /> Studio Pro
             </div>
 
-            {/* Branding Header */}
             <div className="flex items-center gap-5 mb-12">
               <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-700 rounded-[22px] flex items-center justify-center shadow-xl shadow-orange-200 transition-transform hover:scale-110">
                 <Sparkles className="text-white" size={32} />
@@ -171,7 +184,6 @@ export default function CuemathStudio() {
             </div>
 
             <div className="space-y-10">
-              {/* Input Group */}
               <div className="relative group">
                 <div className="flex justify-between items-center mb-4 px-2">
                    <label className="text-[11px] font-bold uppercase text-slate-400 tracking-[0.2em] group-focus-within:text-orange-500 transition-colors">Your Idea</label>
@@ -183,36 +195,35 @@ export default function CuemathStudio() {
                 </div>
                 <textarea
                   className="w-full p-8 rounded-[35px] bg-[#F8FAFC] border-2 border-transparent focus:border-orange-500 focus:bg-white outline-none transition-all text-base font-medium resize-none min-h-[160px] shadow-inner"
-                  placeholder="Why kids forget math concepts..."
+                  placeholder="Explain why math concepts stick..."
                   value={idea}
                   onChange={(e) => setIdea(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), generate())}
                 />
               </div>
-
-              {/* Format Selection Buttons */}
+              {/* Format Toggles */}
               <div className="grid grid-cols-2 gap-5">
                 <button 
                   onClick={() => setFormat("post")} 
                   className={cn(
-                    "cursor-pointer flex flex-col items-center justify-center gap-3 py-10 rounded-[40px] border-2 transition-all active:scale-95",
-                    format === "post" ? "bg-[#0F172A] text-white border-[#0F172A] shadow-2xl" : "bg-white text-slate-300 border-slate-50 hover:border-slate-200"
+                    "cursor-pointer flex flex-col items-center justify-center gap-3 py-8 rounded-[35px] border-2 transition-all active:scale-95",
+                    format === "post" ? "bg-[#0F172A] text-white border-[#0F172A] shadow-2xl" : "bg-white text-slate-300 border-slate-100 hover:border-slate-200"
                   )}
                 >
-                  <Maximize size={24} /> <span className="text-[11px] font-black uppercase tracking-widest">Post (1:1)</span>
+                  <Maximize size={24} /> <span className="text-[10px] font-black uppercase tracking-widest">Post (1:1)</span>
                 </button>
                 <button 
                   onClick={() => setFormat("story")} 
                   className={cn(
-                    "cursor-pointer flex flex-col items-center justify-center gap-3 py-10 rounded-[40px] border-2 transition-all active:scale-95",
-                    format === "story" ? "bg-[#0F172A] text-white border-[#0F172A] shadow-2xl" : "bg-white text-slate-300 border-slate-50 hover:border-slate-200"
+                    "cursor-pointer flex flex-col items-center justify-center gap-3 py-8 rounded-[35px] border-2 transition-all active:scale-95",
+                    format === "story" ? "bg-[#0F172A] text-white border-[#0F172A] shadow-2xl" : "bg-white text-slate-300 border-slate-100 hover:border-slate-200"
                   )}
                 >
-                  <Smartphone size={24} /> <span className="text-[11px] font-black uppercase tracking-widest">Story (9:16)</span>
+                  <Smartphone size={24} /> <span className="text-[10px] font-black uppercase tracking-widest">Story (9:16)</span>
                 </button>
               </div>
 
-              {/* Primary Action Button */}
+              {/* Main Build Button */}
               <button 
                 onClick={generate} 
                 disabled={loading} 
@@ -237,7 +248,7 @@ export default function CuemathStudio() {
                     onClick={() => setTheme(t)} 
                     className={cn(
                       "cursor-pointer w-full flex items-center justify-between px-10 py-6 rounded-[30px] border-2 transition-all",
-                      theme.id === t.id ? "border-orange-500 bg-orange-50/40 text-orange-700 font-bold" : "border-slate-50 bg-[#F8FAFC] text-slate-500 hover:bg-slate-100"
+                      theme.id === t.id ? "border-orange-500 bg-orange-50/40 text-orange-700 font-bold" : "border-slate-50 bg-[#F8FAFC] text-slate-500"
                     )}
                    >
                      <span className="text-base font-semibold">{t.name}</span>
@@ -252,10 +263,11 @@ export default function CuemathStudio() {
             </motion.div>
           )}
         </aside>
+
         {/* PREVIEW CANVAS AREA */}
         <main className="lg:col-span-8 flex flex-col items-center justify-center min-h-[800px]">
           {loading ? (
-            /* 🔥 1. AI THINKING STATE WITH TYPEWRITER EFFECT */
+            /* 🔥 AI THINKING STATE */
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
               className="w-full max-w-[550px] aspect-square rounded-[70px] bg-white shadow-2xl flex flex-col items-center justify-center p-20 border border-slate-100 relative overflow-hidden"
@@ -265,26 +277,18 @@ export default function CuemathStudio() {
                 <RefreshCw size={48} className="text-orange-500 animate-spin" />
                 <div className="text-xl font-black italic uppercase tracking-widest text-[#0F172A] text-center min-h-[1.5em]">
                   <Typewriter
-                    words={['Analyzing Math Science...', 'Crafting the Hook...', 'Visualizing Concepts...', 'Finalizing Carousel...']}
+                    words={['Analyzing Science...', 'Crafting Hooks...', 'Visualizing Masterfully...', 'Finalizing Carousel...']}
                     loop={0} cursor cursorStyle='|' typeSpeed={60} deleteSpeed={40} delaySpeed={1000}
-                  />
-                </div>
-                <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ x: "-100%" }} animate={{ x: "100%" }} 
-                    transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                    className="w-full h-full bg-orange-500" 
                   />
                 </div>
               </div>
             </motion.div>
           ) : slides.length > 0 ? (
             <div className="w-full flex flex-col items-center gap-10">
-              
-              {/* 🔥 2. THE INTERACTIVE 3D CARD (TILT & HOVER) */}
+              {/* 🔥 THE INTERACTIVE 3D CARD */}
               <Tilt 
                 tiltMaxAngleX={4} tiltMaxAngleY={4} perspective={1000} scale={1.02} 
-                className="w-full flex justify-center"
+                className="w-full flex justify-center perspective-1000"
               >
                 <div 
                   ref={cardRef} 
@@ -295,11 +299,11 @@ export default function CuemathStudio() {
                     "rounded-[70px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden"
                   )}
                 >
-                  {/* Pattern Overlay */}
+                  {/* Visual Pattern Overlay */}
                   <div className={cn("absolute inset-0 pointer-events-none z-0", theme.pattern)} style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '35px 35px' }} />
 
                   {/* ZONE 1: FIXED HEADER (Top 25% height) */}
-                  <header className="h-32 px-12 md:px-16 pt-12 flex justify-between items-start z-20 shrink-0">
+                  <header className="h-[25%] px-12 md:px-16 pt-12 flex justify-between items-start z-20 shrink-0">
                      <div className={cn(theme.accent, "px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-lg")}>
                         {index === 0 ? 'The Hook' : index === slides.length - 1 ? 'Action' : `Insight ${index}`}
                      </div>
@@ -312,7 +316,7 @@ export default function CuemathStudio() {
                   <div className="flex-1 flex flex-col justify-center px-12 md:px-16 z-10 relative text-center min-h-0">
                     <AnimatePresence mode="wait">
                       <motion.div
-                        key={index} // Key ensures animation runs on slide flip
+                        key={index}
                         initial={{ x: 25, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -25, opacity: 0 }}
                         transition={{ duration: 0.35, ease: "easeOut" }}
                         className="flex-1 flex flex-col justify-center items-center overflow-hidden py-4"
@@ -320,7 +324,7 @@ export default function CuemathStudio() {
                         <h2 
                           contentEditable suppressContentEditableWarning
                           onBlur={(e) => updateSlideText("title", e.currentTarget.innerText)}
-                          className={cn(getTitleSize(slides[index].title), "font-black tracking-tighter leading-[1.1] mb-6 outline-none focus:bg-orange-500/10 rounded-2xl p-2 transition-all cursor-text")}
+                          className={cn(getTitleSize(slides[index].title), "font-black tracking-tighter leading-[1.05] mb-6 outline-none focus:bg-orange-500/10 rounded-2xl p-2 transition-all cursor-text")}
                         >
                           {cleanText(slides[index].title)}
                         </h2>
@@ -338,6 +342,7 @@ export default function CuemathStudio() {
                       <Edit3 size={12}/> Click Text to tweak
                     </div>
                   </div>
+
                   {/* ZONE 3: FIXED FOOTER (Strictly anchored to bottom) */}
                   <footer className="min-h-[160px] px-12 md:px-16 border-t border-current/10 flex justify-between items-center z-10 shrink-0 relative bg-inherit pb-10">
                      <div className="text-left pt-2">
@@ -350,25 +355,18 @@ export default function CuemathStudio() {
                      </div>
                   </footer>
 
-                  {/* Brand Accents blurs */}
+                  {/* Brand Accents */}
                   <div className="absolute top-0 right-0 w-80 h-80 bg-orange-500/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                   <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
                 </div>
               </Tilt>
 
-              {/* ACTION BAR - High-End Floating Controls */}
+              {/* ACTION BAR - Floating Controls */}
               <motion.div 
                 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
                 className="flex items-center gap-6 bg-[#0F172A] text-white p-7 rounded-[45px] shadow-2xl transition-all border border-white/5 active:scale-[0.99]"
               >
-                {/* Navigation Arrows */}
-                <button 
-                  onClick={() => setIndex(Math.max(0, index - 1))} 
-                  disabled={index === 0} 
-                  className="cursor-pointer p-3 hover:bg-white/10 rounded-full disabled:opacity-20 transition-all"
-                >
-                  <ChevronLeft size={32} />
-                </button>
+                <button onClick={() => setIndex(Math.max(0, index - 1))} disabled={index === 0} className="cursor-pointer p-3 hover:bg-white/10 rounded-full disabled:opacity-20 transition-all"><ChevronLeft size={32} /></button>
                 
                 <div className="flex flex-col items-center gap-3 min-w-[160px]">
                   <div className="flex gap-2.5">
@@ -388,49 +386,22 @@ export default function CuemathStudio() {
                   </span>
                 </div>
 
-                <button 
-                  onClick={() => setIndex(Math.min(slides.length - 1, index + 1))} 
-                  disabled={index === slides.length - 1} 
-                  className="cursor-pointer p-3 hover:bg-white/10 rounded-full disabled:opacity-20 transition-all"
-                >
-                  <ChevronRight size={32} />
-                </button>
+                <button onClick={() => setIndex(Math.min(slides.length - 1, index + 1))} disabled={index === slides.length - 1} className="cursor-pointer p-3 hover:bg-white/10 rounded-full disabled:opacity-20 transition-all"><ChevronRight size={32} /></button>
                 
                 <div className="h-10 w-[1px] bg-white/10 mx-2" />
                 
                 <div className="flex items-center gap-3">
-                  {/* ZIP Export Handler */}
-                  <button 
-                    onClick={downloadAll} 
-                    className="cursor-pointer flex items-center gap-2 bg-white/10 text-white px-8 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95 shadow-lg"
-                  >
-                    <Library size={18} /> Export All (ZIP)
-                  </button>
-
-                  {/* Single PNG Export Handler */}
-                  <button 
-                    onClick={download} 
-                    className="cursor-pointer flex items-center gap-3 bg-orange-600 text-white px-12 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl active:scale-95 group"
-                  >
-                    <Download size={18} className="group-hover:-translate-y-0.5 transition-transform" /> 
-                    Export PNG
-                  </button>
+                  <button onClick={downloadAll} className="cursor-pointer flex items-center gap-2 bg-white/10 text-white px-8 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all shadow-lg active:scale-95"><Library size={18} /> ZIP</button>
+                  <button onClick={download} className="cursor-pointer flex items-center gap-3 bg-orange-600 text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-orange-700 transition-all shadow-xl active:scale-95 group"><Download size={18} className="group-hover:-translate-y-0.5 transition-transform" /> PNG</button>
                 </div>
               </motion.div>
             </div>
           ) : (
-            /* EMPTY STATE: WAITING FOR USER INPUT */
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="h-[750px] flex flex-col items-center justify-center text-slate-200"
-            >
+            /* EMPTY STATE */
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[750px] flex flex-col items-center justify-center text-slate-200">
               <div className="bg-white p-24 rounded-[80px] shadow-sm border border-slate-50 flex flex-col items-center group">
-                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-90 transition-all duration-700">
-                  <Plus size={64} strokeWidth={1} className="text-slate-300" />
-                </div>
-                <p className="text-[12px] font-black uppercase tracking-[0.6em] opacity-30 text-center leading-loose select-none">
-                  Describe your idea to start <br/> the studio session
-                </p>
+                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-90 transition-all duration-700"><Plus size={64} strokeWidth={1} className="text-slate-300" /></div>
+                <p className="text-[12px] font-black uppercase tracking-[0.6em] opacity-30 text-center leading-loose select-none">Describe idea to start</p>
               </div>
             </motion.div>
           )}
@@ -438,4 +409,4 @@ export default function CuemathStudio() {
       </div>
     </div>
   );
-}
+}    
