@@ -9,7 +9,6 @@ import Tilt from "react-parallax-tilt";
 import { Typewriter } from "react-simple-typewriter";
 import JSZip from "jszip";
 // @ts-ignore
-import { saveAs } from "file-saver";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { 
@@ -81,16 +80,23 @@ export default function CuemathStudio() {
   // 2. Bulk Export Logic (ZIP)
   const downloadAll = async () => {
     if (slides.length === 0 || !cardRef.current) return;
-    const zip = new JSZip();
+    
     const batchToast = toast.loading("Preparing ZIP bundle...");
     const originalIndex = index;
     
     try {
+      // 🔥 THIS IS THE FIX: Tell TypeScript to ignore the next line
+      // @ts-ignore
+      const { saveAs } = await import("file-saver");
+      
+      const zip = new JSZip();
+
       for (let i = 0; i < slides.length; i++) {
         setIndex(i); // Change slide
-        await new Promise((r) => setTimeout(r, 600)); // Wait for animation & render
+        // Wait for animation & render
+        await new Promise((r) => setTimeout(r, 600)); 
         
-        const dataUrl = await htmlToImage.toPng(cardRef.current, {
+        const dataUrl = await htmlToImage.toPng(cardRef.current!, {
           pixelRatio: 2,
           backgroundColor: theme.bg.includes("white") ? "#ffffff" : "#0A0E17",
         });
@@ -104,6 +110,7 @@ export default function CuemathStudio() {
       toast.success("All slides exported!", { id: batchToast });
     } catch (e) {
       toast.error("Bulk export failed.", { id: batchToast });
+      console.error(e);
     } finally {
       setIndex(originalIndex);
     }
