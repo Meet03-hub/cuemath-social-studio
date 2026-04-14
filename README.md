@@ -126,7 +126,7 @@ GROQ_API_KEY=your_api_key_here
 
 ## 📸 Screenshots
 
-<img width="817" height="373" alt="image" src="https://github.com/user-attachments/assets/bca9125b-631e-4563-b75f-e90c8c017d92" />
+<img width="818" height="373" alt="image" src="https://github.com/user-attachments/assets/bca9125b-631e-4563-b75f-e90c8c017d92" />
 
 <img width="433" height="386" alt="image" src="https://github.com/user-attachments/assets/a8a9c92e-de27-486c-9630-991f872d4a5e" /> <img height="386" alt="image" src="https://github.com/user-attachments/assets/eba94a8d-5e16-4201-b8d5-fea5beff3435" />
 
