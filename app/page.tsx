@@ -7,6 +7,7 @@ import { toast, Toaster } from "sonner";
 import confetti from "canvas-confetti";
 import Tilt from "react-parallax-tilt";
 import { Typewriter } from "react-simple-typewriter";
+// @ts-ignore
 import JSZip from "jszip";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
