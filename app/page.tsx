@@ -14,7 +14,7 @@ import { twMerge } from "tailwind-merge";
 import { 
   Sparkles, Download, RefreshCw, Maximize, Smartphone, 
   ChevronLeft, ChevronRight, Plus, Palette, Edit3, XCircle,
-  Library, Zap
+  Library, Zap, Wand2
 } from "lucide-react";
 
 function cn(...inputs: ClassValue[]) {
@@ -37,13 +37,14 @@ export default function CuemathStudio() {
   const [idea, setIdea] = useState("");
   const [slides, setSlides] = useState<Slide[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [index, setIndex] = useState(0);
   const [format, setFormat] = useState<"post" | "story">("post");
   const [theme, setTheme] = useState(THEMES[0]);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Dynamic Font Scaling: Physically prevents text from hitting the footer
+  // Dynamic Font Scaling: Prevents text from hitting the footer
   const getTitleSize = (text: string) => {
     const len = text.length;
     if (len > 60) return "text-xl md:text-2xl"; 
@@ -58,7 +59,41 @@ export default function CuemathStudio() {
     return "text-sm md:text-lg";
   };
 
-  // 1. Single Slide Download Handler
+  const updateSlideText = (field: keyof Slide, val: string) => {
+    const newSlides = [...slides];
+    newSlides[index][field] = val;
+    setSlides(newSlides);
+  };
+
+  // Handler for Single Slide Refinement
+  const regenerateSlide = async () => {
+    if (slides.length === 0 || isRegenerating) return;
+    setIsRegenerating(true);
+    const toastId = toast.loading("Refining this slide...");
+    try {
+      const res = await fetch("/api/regenerate-slide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          currentSlide: slides[index], 
+          format, 
+          topic: idea 
+        }),
+      });
+      const data = await res.json();
+      if (data.result) {
+        const newSlides = [...slides];
+        newSlides[index] = data.result;
+        setSlides(newSlides);
+        toast.success("Slide refined!", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Refinement failed.", { id: toastId });
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+  // 1. Single Slide Download Handler (PNG)
   const download = async () => {
     if (!cardRef.current) return;
     const downloadToast = toast.loading("📥 Exporting high-res image...");
@@ -77,7 +112,7 @@ export default function CuemathStudio() {
     }
   };
 
-  // 2. Bulk Export Logic (Vercel-Safe Dynamic Import)
+  // 2. Bulk Export Logic (ZIP)
   const downloadAll = async () => {
     if (slides.length === 0 || !cardRef.current) return;
     
@@ -85,7 +120,6 @@ export default function CuemathStudio() {
     const originalIndex = index;
     
     try {
-      // 🔥 DYNAMIC IMPORT: This fixes the Vercel build error
       // @ts-ignore
       const { saveAs } = await import("file-saver");
       const zip = new JSZip();
@@ -113,12 +147,7 @@ export default function CuemathStudio() {
     }
   };
 
-  const updateSlideText = (field: keyof Slide, val: string) => {
-    const newSlides = [...slides];
-    newSlides[index][field] = val;
-    setSlides(newSlides);
-  };
-  // AI Generation Handler with celebration logic
+  // 3. Main AI Generation Handler
   const generate = async () => {
     if (!idea.trim() || loading) return;
     setLoading(true);
@@ -135,7 +164,6 @@ export default function CuemathStudio() {
         setIndex(0);
         toast.success("✨ Carousel Generated!", { id: toastId });
         
-        // Celebrate success
         confetti({ 
           particleCount: 150, 
           spread: 70, 
@@ -150,7 +178,6 @@ export default function CuemathStudio() {
     }
   };
 
-  // Keyboard navigation for power users
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
       if (slides.length === 0) return;
@@ -160,7 +187,6 @@ export default function CuemathStudio() {
     window.addEventListener("keydown", handleKeys);
     return () => window.removeEventListener("keydown", handleKeys);
   }, [slides]);
-
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-slate-900 font-sans p-4 md:p-10 selection:bg-orange-100 relative overflow-hidden">
       {/* Professional Workspace Background */}
@@ -264,8 +290,7 @@ export default function CuemathStudio() {
             </motion.div>
           )}
         </aside>
-
-        {/* PREVIEW CANVAS AREA */}
+                {/* PREVIEW CANVAS AREA */}
         <main className="lg:col-span-8 flex flex-col items-center justify-center min-h-[800px]">
           {loading ? (
             /* 🔥 AI THINKING STATE */
@@ -303,7 +328,7 @@ export default function CuemathStudio() {
                   {/* Visual Pattern Overlay */}
                   <div className={cn("absolute inset-0 pointer-events-none z-0", theme.pattern)} style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '35px 35px' }} />
 
-                  {/* ZONE 1: FIXED HEADER (Top 25% height) */}
+                  {/* ZONE 1: FIXED HEADER */}
                   <header className="h-[25%] px-12 md:px-16 pt-12 flex justify-between items-start z-20 shrink-0">
                      <div className={cn(theme.accent, "px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-lg")}>
                         {index === 0 ? 'The Hook' : index === slides.length - 1 ? 'Action' : `Insight ${index}`}
@@ -313,7 +338,7 @@ export default function CuemathStudio() {
                      </div>
                   </header>
 
-                  {/* ZONE 2: SAFE CONTENT BOX (Middle Tier) */}
+                  {/* ZONE 2: SAFE CONTENT BOX */}
                   <div className="flex-1 flex flex-col justify-center px-12 md:px-16 z-10 relative text-center min-h-0">
                     <AnimatePresence mode="wait">
                       <motion.div
@@ -339,26 +364,35 @@ export default function CuemathStudio() {
                       </motion.div>
                     </AnimatePresence>
                     
-                    <div className={cn("mt-auto pb-6 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-colors shrink-0", theme.hint)}>
-                      <Edit3 size={12}/> Click Text to tweak
+                    {/* ITERATION CONTROLS (Single Slide Refinement) */}
+                    <div className="mt-auto pb-6 flex items-center justify-center gap-4 shrink-0">
+                      <div className={cn("flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-40")}>
+                        <Edit3 size={12}/> Click Text to tweak
+                      </div>
+                      <button 
+                        onClick={regenerateSlide}
+                        disabled={isRegenerating}
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all",
+                          "bg-orange-500/10 text-orange-600 hover:bg-orange-600 hover:text-white border border-orange-500/20 active:scale-95 disabled:opacity-50"
+                        )}
+                      >
+                        {isRegenerating ? <RefreshCw size={10} className="animate-spin" /> : <Wand2 size={10} />}
+                        Refine Slide
+                      </button>
                     </div>
                   </div>
 
-                  {/* ZONE 3: FIXED FOOTER (Strictly anchored to bottom) */}
+                  {/* ZONE 3: FIXED FOOTER */}
                   <footer className="min-h-[160px] px-12 md:px-16 border-t border-current/10 flex justify-between items-center z-10 shrink-0 relative bg-inherit pb-10">
                      <div className="text-left pt-2">
                        <p className="text-[14px] font-black tracking-widest uppercase mb-1 italic">CUEMATH ACADEMY</p>
                        <p className="text-[10px] opacity-60 font-bold tracking-[0.1em] uppercase">WE MAKE YOUR CHILD MATHFIT™</p>
                      </div>
-                     {/* NUMBER POSITIONED HIGHER TO AVOID CORNER CLIPPING */}
                      <div className="text-[120px] font-black opacity-[0.06] leading-none select-none absolute right-12 bottom-6">
                         {index + 1}
                      </div>
                   </footer>
-
-                  {/* Brand Accents */}
-                  <div className="absolute top-0 right-0 w-80 h-80 bg-orange-500/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                  <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
                 </div>
               </Tilt>
 
@@ -382,7 +416,7 @@ export default function CuemathStudio() {
                       />
                     ))}
                   </div>
-                  <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] select-none">
+                  <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] select-none text-center">
                     Slide {index + 1} of {slides.length}
                   </span>
                 </div>
@@ -401,8 +435,12 @@ export default function CuemathStudio() {
             /* EMPTY STATE */
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[750px] flex flex-col items-center justify-center text-slate-200">
               <div className="bg-white p-24 rounded-[80px] shadow-sm border border-slate-50 flex flex-col items-center group">
-                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-90 transition-all duration-700"><Plus size={64} strokeWidth={1} className="text-slate-300" /></div>
-                <p className="text-[12px] font-black uppercase tracking-[0.6em] opacity-30 text-center leading-loose select-none">Describe idea to start</p>
+                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-90 transition-all duration-700">
+                  <Plus size={64} strokeWidth={1} className="text-slate-300" />
+                </div>
+                <p className="text-[12px] font-black uppercase tracking-[0.6em] opacity-30 text-center leading-loose select-none">
+                  Describe idea to start
+                </p>
               </div>
             </motion.div>
           )}
@@ -410,4 +448,4 @@ export default function CuemathStudio() {
       </div>
     </div>
   );
-}    
+}
