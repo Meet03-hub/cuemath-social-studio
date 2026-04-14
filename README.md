@@ -47,13 +47,13 @@ Output:
 
 ## 🏗️ Architecture
 User Idea
-↓
+   ↓
 Groq API (LLM)
-↓
+   ↓
 Structured Slides (Hook → Content → CTA)
-↓
+   ↓
 UI Rendering (Next.js + Tailwind)
-↓
+   ↓
 Export (PNG / ZIP)
 
 
@@ -120,13 +120,13 @@ npm run dev
 Create a .env.local file:
 GROQ_API_KEY=your_api_key_here
 
-📸 Screenshots
+## 📸 Screenshots
 
 <img width="649" height="373" alt="image" src="https://github.com/user-attachments/assets/bca9125b-631e-4563-b75f-e90c8c017d92" />
 
 <img width="433" height="386" alt="image" src="https://github.com/user-attachments/assets/a8a9c92e-de27-486c-9630-991f872d4a5e" />
 
-🙌 Final Thoughts
+## 🙌 Final Thoughts
 
 This project focuses on turning messy human input into structured, visually engaging content while maintaining speed, usability, and flexibility.
 
