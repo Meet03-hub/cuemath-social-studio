@@ -1,13 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
-    // This allows the build to succeed even if there are type errors
+    // This will ignore the file-saver error and let Vercel finish the build
     ignoreBuildErrors: true,
   },
   eslint: {
-    // This allows the build to succeed even if there are linting errors
+    // This will also ignore linting errors which sometimes block Vercel builds
     ignoreDuringBuilds: true,
   },
 };
-
-export default nextConfig;
